@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threads 投稿管理 | MINAMI MINDLAB</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --border: #2a2a2a;
+    --accent: #c9a96e;
+    --accent-dim: rgba(201,169,110,0.12);
+    --text: #e8e4de;
+    --text-dim: #7a7570;
+    --danger: #c0392b;
+    --success: #2ecc71;
+    --font: 'Helvetica Neue', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 40px;
+  }
+
+  header h1 {
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  header p {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .section { margin-bottom: 40px; }
+
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 16px;
+    resize: vertical;
+    min-height: 120px;
+    outline: none;
+    border-radius: 2px;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+
+  .char-count {
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  .char-count.over { color: var(--danger); }
+
+  .btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    border-radius: 2px;
+    transition: opacity 0.2s;
+  }
+
+  .btn:hover { opacity: 0.8; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn-primary { background: var(--accent); color: #0f0f0f; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+  .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); font-size: 11px; padding: 6px 12px; }
+
+  .post-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .post-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 16px;
+    position: relative;
+  }
+
+  .post-item.next-up { border-color: var(--accent); }
+
+  .post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .post-num {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  .post-status {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .status-pending { background: var(--accent-dim); color: var(--accent); }
+  .status-posted { background: rgba(46,204,113,0.1); color: var(--success); }
+  .status-next { background: var(--accent); color: #0f0f0f; }
+
+  .post-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    margin-bottom: 12px;
+  }
+
+  .post-actions { display: flex; gap: 8px; align-items: center; }
+
+  .schedule-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .schedule-item { display: flex; flex-direction: column; gap: 6px; }
+
+  .schedule-item label {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  select, input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  select:focus, input[type="number"]:focus { border-color: var(--accent); }
+
+  .log {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 16px;
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text-dim);
+    font-family: 'Courier New', monospace;
+  }
+
+  .log-entry { padding: 2px 0; border-bottom: 1px solid var(--border); }
+  .log-entry:last-child { border-bottom: none; }
+  .log-entry.success { color: var(--success); }
+  .log-entry.error { color: var(--danger); }
+  .log-entry.info { color: var(--accent); }
+
+  .token-field {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 10px 14px;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .token-field:focus { border-color: var(--accent); color: var(--text); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-dim);
+    font-size: 13px;
+    border: 1px dashed var(--border);
+    border-radius: 2px;
+  }
+
+  .row { display: flex; gap: 10px; }
+
+  .next-indicator {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .timer-display {
+    font-size: 12px;
+    color: var(--accent);
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>MINAMI MINDLAB — Threads Scheduler</h1>
+    <p>仮説検証投稿の管理・自動投稿ツール</p>
+  </header>
+
+  <!-- Token -->
+  <div class="section">
+    <div class="section-label">アクセストークン</div>
+    <input type="password" class="token-field" id="tokenInput" placeholder="Threadsアクセストークンを入力..." />
+  </div>
+
+  <!-- Add Post -->
+  <div class="section">
+    <div class="section-label">投稿を追加</div>
+    <textarea id="newPostText" placeholder="投稿文を入力...&#10;&#10;改行も反映されます。"></textarea>
+    <div class="char-count" id="charCount">0 / 500</div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-primary" onclick="addPost()">リストに追加</button>
+    </div>
+  </div>
+
+  <!-- Post List -->
+  <div class="section">
+    <div class="section-label">投稿リスト</div>
+    <div class="post-list" id="postList">
+      <div class="empty-state">投稿がありません。上のフォームから追加してください。</div>
+    </div>
+  </div>
+
+  <!-- Schedule -->
+  <div class="section">
+    <div class="section-label">投稿スケジュール</div>
+    <div class="schedule-bar">
+      <div class="schedule-item">
+        <label>投稿間隔</label>
+        <select id="intervalUnit">
+          <option value="test">テスト（30秒）</option>
+          <option value="hours">時間ごと</option>
+          <option value="days" selected>日ごと</option>
+        </select>
+      </div>
+      <div class="schedule-item" id="intervalValueWrap">
+        <label>間隔の数</label>
+        <input type="number" id="intervalValue" value="1" min="1" max="30" style="width:80px;" />
+      </div>
+      <div class="schedule-item">
+        <label>ローテーション</label>
+        <select id="rotationMode">
+          <option value="sequential">順番に</option>
+          <option value="loop">ループ（繰り返し）</option>
+        </select>
+      </div>
+      <div class="schedule-item" style="justify-content:flex-end; margin-left:auto;">
+        <label>&nbsp;</label>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary" id="startBtn" onclick="startScheduler()">開始</button>
+          <button class="btn btn-ghost" id="stopBtn" onclick="stopScheduler()" disabled>停止</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
+      <div class="timer-display" id="timerDisplay"></div>
+      <button class="btn btn-primary" onclick="postNow()" id="postNowBtn">今すぐ次の投稿を送信</button>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="section">
+    <div class="section-label">ログ</div>
+    <div class="log" id="logArea">
+      <div class="log-entry info">— 準備完了。トークンを入力して投稿を追加してください。</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const APP_ID = '3918754228430644';
+  let posts = [];
+  let currentIndex = 0;
+  let schedulerInterval = null;
+  let timerInterval = null;
+  let nextPostTime = null;
+
+  // Load saved data
+  window.onload = () => {
+    const saved = localStorage.getItem('mm_posts');
+    if (saved) posts = JSON.parse(saved);
+    const savedToken = localStorage.getItem('mm_token');
+    if (savedToken) document.getElementById('tokenInput').value = savedToken;
+    const savedIndex = localStorage.getItem('mm_index');
+    if (savedIndex) currentIndex = parseInt(savedIndex);
+    renderPosts();
+  };
+
+  document.getElementById('tokenInput').addEventListener('change', e => {
+    localStorage.setItem('mm_token', e.target.value);
+  });
+
+  document.getElementById('newPostText').addEventListener('input', e => {
+    const len = e.target.value.length;
+    const el = document.getElementById('charCount');
+    el.textContent = `${len} / 500`;
+    el.className = 'char-count' + (len > 500 ? ' over' : '');
+  });
+
+  document.getElementById('intervalUnit').addEventListener('change', e => {
+    document.getElementById('intervalValueWrap').style.display =
+      e.target.value === 'test' ? 'none' : 'flex';
+  });
+
+  function savePosts() {
+    localStorage.setItem('mm_posts', JSON.stringify(posts));
+    localStorage.setItem('mm_index', currentIndex);
+  }
+
+  function addPost() {
+    const text = document.getElementById('newPostText').value.trim();
+    if (!text) return;
+    if (text.length > 500) { addLog('投稿文が500文字を超えています。', 'error'); return; }
+    posts.push({ text, status: 'pending', postedAt: null });
+    savePosts();
+    document.getElementById('newPostText').value = '';
+    document.getElementById('charCount').textContent = '0 / 500';
+    renderPosts();
+    addLog(`投稿を追加しました（${posts.length}件目）`, 'info');
+  }
+
+  function deletePost(i) {
+    posts.splice(i, 1);
+    if (currentIndex >= posts.length) currentIndex = Math.max(0, posts.length - 1);
+    savePosts();
+    renderPosts();
+    addLog('投稿を削除しました。', 'info');
+  }
+
+  function moveUp(i) {
+    if (i === 0) return;
+    [posts[i-1], posts[i]] = [posts[i], posts[i-1]];
+    savePosts();
+    renderPosts();
+  }
+
+  function moveDown(i) {
+    if (i === posts.length - 1) return;
+    [posts[i], posts[i+1]] = [posts[i+1], posts[i]];
+    savePosts();
+    renderPosts();
+  }
+
+  function renderPosts() {
+    const list = document.getElementById('postList');
+    if (posts.length === 0) {
+      list.innerHTML = '<div class="empty-state">投稿がありません。上のフォームから追加してください。</div>';
+      return;
+    }
+
+    const mode = document.getElementById('rotationMode').value;
+    let effectiveIndex = currentIndex;
+    if (mode === 'loop') effectiveIndex = currentIndex % posts.length;
+
+    list.innerHTML = posts.map((p, i) => {
+      const isNext = i === effectiveIndex && p.status !== 'posted';
+      const statusLabel = p.status === 'posted' ? '投稿済み' : isNext ? '次の投稿' : '待機中';
+      const statusClass = p.status === 'posted' ? 'status-posted' : isNext ? 'status-next' : 'status-pending';
+      return `
+        <div class="post-item ${isNext ? 'next-up' : ''}">
+          <div class="post-meta">
+            <span class="post-num">#${i+1}</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              ${p.postedAt ? `<span style="font-size:10px;color:var(--text-dim)">${p.postedAt}</span>` : ''}
+              <span class="post-status ${statusClass}">${statusLabel}</span>
+            </div>
+          </div>
+          <div class="post-text">${escapeHtml(p.text)}</div>
+          <div class="post-actions">
+            <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="moveUp(${i})">↑</button>
+            <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="moveDown(${i})">↓</button>
+            <button class="btn btn-danger" onclick="deletePost(${i})">削除</button>
+            ${p.status === 'posted' ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="resetPost(${i})">リセット</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function resetPost(i) {
+    posts[i].status = 'pending';
+    posts[i].postedAt = null;
+    savePosts();
+    renderPosts();
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+
+  function getNextPost() {
+    const mode = document.getElementById('rotationMode').value;
+    if (mode === 'loop') {
+      return { post: posts[currentIndex % posts.length], index: currentIndex % posts.length };
+    }
+    for (let i = currentIndex; i < posts.length; i++) {
+      if (posts[i].status === 'pending') return { post: posts[i], index: i };
+    }
+    return null;
+  }
+
+  async function postNow() {
+    const token = document.getElementById('tokenInput').value.trim();
+    if (!token) { addLog('アクセストークンが入力されていません。', 'error'); return; }
+    if (posts.length === 0) { addLog('投稿がありません。', 'error'); return; }
+
+    const next = getNextPost();
+    if (!next) { addLog('送信できる投稿がありません。すべて投稿済みです。', 'error'); return; }
+
+    const { post, index } = next;
+    addLog(`投稿中... #${index + 1}`, 'info');
+
+    try {
+      // Step 1: Create container
+      const createRes = await fetch(`https://graph.threads.net/v1.0/me/threads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          media_type: 'TEXT',
+          text: post.text,
+          access_token: token
+        })
+      });
+
+      const createData = await createRes.json();
+      if (!createData.id) {
+        addLog(`エラー: ${JSON.stringify(createData)}`, 'error');
+        return;
+      }
+
+      // Step 2: Publish
+      await new Promise(r => setTimeout(r, 2000));
+
+      const publishRes = await fetch(`https://graph.threads.net/v1.0/me/threads_publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          creation_id: createData.id,
+          access_token: token
+        })
+      });
+
+      const publishData = await publishRes.json();
+
+      if (publishData.id) {
+        const now = new Date().toLocaleString('ja-JP');
+        posts[index].status = 'posted';
+        posts[index].postedAt = now;
+        currentIndex = index + 1;
+        savePosts();
+        renderPosts();
+        addLog(`✓ 投稿成功！ #${index + 1} — ${now}`, 'success');
+      } else {
+        addLog(`公開エラー: ${JSON.stringify(publishData)}`, 'error');
+      }
+
+    } catch (e) {
+      addLog(`通信エラー: ${e.message}`, 'error');
+    }
+  }
+
+  function getIntervalMs() {
+    const unit = document.getElementById('intervalUnit').value;
+    const val = parseInt(document.getElementById('intervalValue').value) || 1;
+    if (unit === 'test') return 30 * 1000;
+    if (unit === 'hours') return val * 60 * 60 * 1000;
+    if (unit === 'days') return val * 24 * 60 * 60 * 1000;
+    return 24 * 60 * 60 * 1000;
+  }
+
+  function startScheduler() {
+    if (schedulerInterval) return;
+    addLog('スケジューラー開始。', 'info');
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+
+    postNow();
+    const ms = getIntervalMs();
+    nextPostTime = Date.now() + ms;
+
+    schedulerInterval = setInterval(() => {
+      postNow();
+      nextPostTime = Date.now() + getIntervalMs();
+    }, ms);
+
+    timerInterval = setInterval(updateTimer, 1000);
+  }
+
+  function stopScheduler() {
+    clearInterval(schedulerInterval);
+    clearInterval(timerInterval);
+    schedulerInterval = null;
+    timerInterval = null;
+    nextPostTime = null;
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('timerDisplay').textContent = '';
+    addLog('スケジューラー停止。', 'info');
+  }
+
+  function updateTimer() {
+    if (!nextPostTime) return;
+    const remaining = nextPostTime - Date.now();
+    if (remaining <= 0) { document.getElementById('timerDisplay').textContent = '投稿中...'; return; }
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('timerDisplay').textContent =
+      `次の投稿まで: ${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
+  }
+
+  function addLog(msg, type = 'info') {
+    const log = document.getElementById('logArea');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    const time = new Date().toLocaleTimeString('ja-JP');
+    entry.textContent = `[${time}] ${msg}`;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // Init
+  document.getElementById('intervalUnit').dispatchEvent(new Event('change'));
+  document.getElementById('rotationMode').addEventListener('change', renderPosts);
+</script>
+</body>
+</html>
