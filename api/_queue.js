@@ -1,4 +1,4 @@
-import { appendRange, readRange, updateRange } from './_google.js';
+import { appendRange, readRange, updateRange } from './_gas.js';
 
 const truthy = value => value === true || String(value).toLowerCase() === 'true';
 const numeric = value => Number.isFinite(Number(value)) ? Number(value) : Number.MAX_SAFE_INTEGER;
